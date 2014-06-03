@@ -241,7 +241,7 @@
 
 //Comment to disable setting feedrate multiplier via encoder
 #ifdef ULTIPANEL
-    #define ULTIPANEL_FEEDMULTIPLY
+    //#define ULTIPANEL_FEEDMULTIPLY
 #endif
 
 // minimum time in microseconds that a movement needs to take if the buffer is emptied.
