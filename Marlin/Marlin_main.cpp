@@ -845,16 +845,16 @@ static void axis_is_at_home(int axis) {
     }
     else if (dual_x_carriage_mode == DXC_DUPLICATION_MODE && active_extruder == 0) {
       current_position[X_AXIS] = base_home_pos(X_AXIS) + add_homeing[X_AXIS];
-      min_pos[X_AXIS] =          base_min_pos(X_AXIS) + add_homeing[X_AXIS];
-      max_pos[X_AXIS] =          min(base_max_pos(X_AXIS) + add_homeing[X_AXIS],
+      min_pos[X_AXIS] =          base_min_pos(X_AXIS);
+      max_pos[X_AXIS] =          min(base_max_pos(X_AXIS),
                                   max(extruder_offset[X_AXIS][1], X2_MAX_POS) - duplicate_extruder_x_offset);
       return;
     }
   }
 #endif
   current_position[axis] = base_home_pos(axis) + add_homeing[axis];
-  min_pos[axis] =          base_min_pos(axis) + add_homeing[axis];
-  max_pos[axis] =          base_max_pos(axis) + add_homeing[axis];
+  min_pos[axis] =          base_min_pos(axis);
+  max_pos[axis] =          base_max_pos(axis);
 }
 
 #ifdef ENABLE_AUTO_BED_LEVELING
