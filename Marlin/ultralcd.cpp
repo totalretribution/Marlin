@@ -850,11 +850,9 @@ static void lcd_control_temperature_preheat_abs_settings_menu()
 
 static void lcd_move_soft_z()
 {
-	refresh_cmd_timeout(); //This is here to prevent screen timeout on this menu
-
 	if (encoderPosition != 0)
 	{
-		//refresh_cmd_timeout();
+		refresh_cmd_timeout();
 		current_position[Z_AXIS] += float((int)encoderPosition) * 0.01;
 		//if (min_software_endstops && current_position[Z_AXIS] < Z_MIN_POS)
 		//current_position[Z_AXIS] = Z_MIN_POS;
@@ -905,12 +903,12 @@ static void HomeMoveForSoftZ()
 
 static void lcd_control_motion_Soft_Z_Offset_menu()
 {
-	refresh_cmd_timeout();//This is here to prevent screen timeout on this menu
 	    START_MENU();
 	    MENU_ITEM(back, MSG_CONTROL, lcd_control_motion_menu);
 		MENU_ITEM(function, "Prepair",preMoveForSoftZ);
 		MENU_ITEM(submenu, "Adjust", lcd_move_soft_z);
 		MENU_ITEM(function, "Home To 0", HomeMoveForSoftZ);
+		MENU_ITEM_EDIT(float52, "add_homeing", &add_homeing[Z_AXIS], -10, 10);
 		END_MENU();
 }
 
