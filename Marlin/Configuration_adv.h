@@ -87,6 +87,7 @@
 //===========================================================================
 
 #define ENDSTOPS_ONLY_FOR_HOMING // If defined the endstops will only be used for homing
+#define SOFTWARE_BASED_Z_OFFSET // if defined will enable the ability to Fine adjust Z to calibrate using the LCD Menu
 
 
 //// AUTOSET LOCATIONS OF LIMIT SWITCHES
