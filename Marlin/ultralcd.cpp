@@ -51,10 +51,12 @@ static void lcd_main_menu();
 static void lcd_tune_menu();
 static void lcd_prepare_menu();
 static void lcd_move_menu();
+static void lcd_move_soft_z();
 static void lcd_control_menu();
 static void lcd_control_temperature_menu();
 static void lcd_control_temperature_preheat_pla_settings_menu();
 static void lcd_control_temperature_preheat_abs_settings_menu();
+static void lcd_control_motion_Soft_Z_Offset_menu();
 static void lcd_control_motion_menu();
 #ifdef DOGLCD
 static void lcd_set_contrast();
@@ -87,6 +89,7 @@ static void menu_action_setting_edit_callback_float5(const char* pstr, float* pt
 static void menu_action_setting_edit_callback_float51(const char* pstr, float* ptr, float minValue, float maxValue, menuFunc_t callbackFunc);
 static void menu_action_setting_edit_callback_float52(const char* pstr, float* ptr, float minValue, float maxValue, menuFunc_t callbackFunc);
 static void menu_action_setting_edit_callback_long5(const char* pstr, unsigned long* ptr, unsigned long minValue, unsigned long maxValue, menuFunc_t callbackFunc);
+
 
 #define ENCODER_FEEDRATE_DEADZONE 10
 
@@ -136,6 +139,7 @@ static void menu_action_setting_edit_callback_long5(const char* pstr, unsigned l
 #define MENU_ITEM_DUMMY() do { _menuItemNr++; } while(0)
 #define MENU_ITEM_EDIT(type, label, args...) MENU_ITEM(setting_edit_ ## type, label, PSTR(label) , ## args )
 #define MENU_ITEM_EDIT_CALLBACK(type, label, args...) MENU_ITEM(setting_edit_callback_ ## type, label, PSTR(label) , ## args )
+//#define MENU_ITEM_SYNCALLBACK(type, label, callbackFunc, args...) (*callbackFunc)(); MENU_ITEM(type, label, PSTR(label) , ## args );
 #define END_MENU() \
     if (encoderPosition / ENCODER_STEPS_PER_MENU_ITEM >= _menuItemNr) encoderPosition = _menuItemNr * ENCODER_STEPS_PER_MENU_ITEM - 1; \
     if ((uint8_t)(encoderPosition / ENCODER_STEPS_PER_MENU_ITEM) >= currentMenuViewOffset + LCD_HEIGHT) { currentMenuViewOffset = (encoderPosition / ENCODER_STEPS_PER_MENU_ITEM) - LCD_HEIGHT + 1; lcdDrawUpdate = 1; _lineNr = currentMenuViewOffset - 1; _drawLineNr = -1; } \
@@ -839,12 +843,81 @@ static void lcd_control_temperature_preheat_abs_settings_menu()
     END_MENU();
 }
 
+static void lcd_move_soft_z()
+{
+	refresh_cmd_timeout(); //This is here to prevent screen timeout on this menu
+
+	if (encoderPosition != 0)
+	{
+		//refresh_cmd_timeout();
+		current_position[Z_AXIS] += float((int)encoderPosition) * 0.01;
+		//if (min_software_endstops && current_position[Z_AXIS] < Z_MIN_POS)
+		//current_position[Z_AXIS] = Z_MIN_POS;
+		//if (max_software_endstops && current_position[Z_AXIS] > Z_MAX_POS)
+		//current_position[Z_AXIS] = Z_MAX_POS;
+		encoderPosition = 0;
+		#ifdef DELTA
+		calculate_delta(current_position);
+		plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS], manual_feedrate[Z_AXIS]/60, active_extruder);
+		#else
+		plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], manual_feedrate[Z_AXIS]/60, active_extruder);
+		#endif
+		lcdDrawUpdate = 1;
+	}
+	
+	if (lcdDrawUpdate)
+	{
+		lcd_implementation_drawedit(PSTR("Z"), ftostr52(current_position[Z_AXIS]));
+	}
+	
+	if (LCD_CLICKED)
+	{
+		lcd_quick_feedback();
+		currentMenu = lcd_control_motion_Soft_Z_Offset_menu;
+		encoderPosition = 0;
+		//Store New M206 Value here
+		add_homeing[Z_AXIS] = add_homeing[Z_AXIS] - current_position[Z_AXIS];
+	}
+}
+
+static void preMoveForSoftZ()
+{
+	enquecommand_P((PSTR("G28")));
+	//st_synchronize();
+	enquecommand_P((PSTR("G1 X0 Y0 Z10 F5000")));
+	//st_synchronize();
+	enquecommand_P((PSTR("M84")));
+	//st_synchronize();
+	enquecommand_P((PSTR("G28 Z0")));
+	//st_synchronize();
+}
+
+static void HomeMoveForSoftZ()
+{
+	enquecommand_P((PSTR("G28 Z0")));
+	enquecommand_P((PSTR("G1 Z0")));
+}
+
+static void lcd_control_motion_Soft_Z_Offset_menu()
+{
+	refresh_cmd_timeout();//This is here to prevent screen timeout on this menu
+	    START_MENU();
+	    MENU_ITEM(back, MSG_CONTROL, lcd_control_motion_menu);
+		MENU_ITEM(function, "Prepair",preMoveForSoftZ);
+		MENU_ITEM(submenu, "Adjust", lcd_move_soft_z);
+		MENU_ITEM(function, "Home To 0", HomeMoveForSoftZ);
+		END_MENU();
+}
+
 static void lcd_control_motion_menu()
 {
     START_MENU();
     MENU_ITEM(back, MSG_CONTROL, lcd_control_menu);
 #ifdef ENABLE_AUTO_BED_LEVELING
     MENU_ITEM_EDIT(float32, MSG_ZPROBE_ZOFFSET, &zprobe_zoffset, 0.5, 50);
+#endif
+#ifdef SOFTWARE_BASED_Z_OFFSET
+	MENU_ITEM(submenu, "M206 Z", lcd_control_motion_Soft_Z_Offset_menu);
 #endif
     MENU_ITEM_EDIT(float5, MSG_ACC, &acceleration, 500, 99000);
     MENU_ITEM_EDIT(float3, MSG_VXY_JERK, &max_xy_jerk, 1, 990);
@@ -1179,7 +1252,7 @@ void lcd_update()
     static unsigned long timeoutToStatus = 0;
 
     #ifdef LCD_HAS_SLOW_BUTTONS
-    slow_buttons = lcd_implementation_read_slow_buttons(); // buttons which take too long to read in interrupt context
+	slow_buttons = lcd_implementation_read_slow_buttons(); // buttons which take too long to read in interrupt context
     #endif
 
     lcd_buttons_update();
